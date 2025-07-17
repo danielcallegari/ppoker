@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PPoker Server - Admin Panel</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #dc2626;
+            --gray: #6b7280;
+            --light-gray: #f3f4f6;
+            --white: #ffffff;
+            --border: #e5e7eb;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--light-gray);
+            color: #374151;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: var(--white);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: var(--primary);
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .connection-status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 500;
+            margin-top: 10px;
+        }
+
+        .status.connected {
+            background: #dcfce7;
+            color: var(--success);
+        }
+
+        .status.disconnected {
+            background: #fef2f2;
+            color: var(--danger);
+        }
+
+        .panel {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .panel h2 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .deck-selector {
+            margin-bottom: 30px;
+        }
+
+        .deck-selector label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .deck-selector select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .clients-section h3 {
+            margin-bottom: 15px;
+            color: #374151;
+        }
+
+        .client-list {
+            min-height: 100px;
+            margin-bottom: 20px;
+        }
+
+        .client-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--light-gray);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .client-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        .client-status.voted {
+            background: var(--primary);
+        }
+
+        .client-status.waiting {
+            background: var(--warning);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 5px;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #1d4ed8;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: #15803d;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #b91c1c;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .vote-card {
+            text-align: center;
+            padding: 15px;
+            background: var(--light-gray);
+            border-radius: 8px;
+        }
+
+        .vote-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .statistics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: var(--light-gray);
+            border-radius: 8px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--gray);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 30px;
+            color: var(--gray);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🃏 PPoker Server</h1>
+            <p>Planning Poker Session Management</p>
+            <p><small>Client URL: <strong>/client</strong></small></p>
+            <div id="server-info" style="margin: 10px 0; font-size: 0.9rem; color: #6b7280;">
+                <div>🖥️ Local: <strong id="local-url">http://localhost:3000</strong></div>
+                <div id="network-info" style="margin-top: 5px;">🌐 Network: <strong id="network-url">Loading...</strong></div>
+            </div>
+            <div id="connection-status" class="connection-status status disconnected">Disconnected</div>
+        </div>
+
+        <!-- Registration State -->
+        <div id="registration-panel" class="panel">
+            <h2>📋 Client Registration</h2>
+            
+            <div class="deck-selector">
+                <label for="deck-select">Card Deck:</label>
+                <select id="deck-select">
+                    <option value="fibonacci">Fibonacci (1,2,3,5,8,13,21,34,55,100)</option>
+                    <option value="tshirt">T-Shirt (XS,S,M,L,XL,XXL)</option>
+                    <option value="hours">Hours (0.5,1.0,etc)</option>
+                </select>
+            </div>
+
+            <div class="clients-section">
+                <h3>Connected Clients (<span id="client-count">0</span>)</h3>
+                <div id="client-list" class="client-list">
+                    <div class="empty-state">Waiting for clients to connect...</div>
+                </div>
+            </div>
+
+            <button id="start-session-btn" class="btn btn-primary" disabled>Start Planning Session</button>
+        </div>
+
+        <!-- Session Start State -->
+        <div id="session-panel" class="panel hidden">
+            <h2>🎯 Voting Session</h2>
+            <p>Session ID: <span id="session-id"></span></p>
+
+            <div class="progress-bar">
+                <div id="progress-fill" class="progress-fill"></div>
+            </div>
+            <p id="progress-text">0 / 0 voted</p>
+
+            <div class="clients-section">
+                <h3>Client Status</h3>
+                <div id="voting-clients" class="client-list"></div>
+            </div>
+
+            <button id="reveal-btn" class="btn btn-success">Reveal Cards</button>
+            <button id="back-to-reg-btn" class="btn btn-danger">Back to Registration</button>
+        </div>
+
+        <!-- Card Reveal State -->
+        <div id="reveal-panel" class="panel hidden">
+            <h2>📊 Results</h2>
+            <p>Session ID: <span id="reveal-session-id"></span></p>
+
+            <h3>Votes</h3>
+            <div id="results-grid" class="results-grid"></div>
+
+            <h3>Statistics</h3>
+            <div id="statistics" class="statistics"></div>
+
+            <button id="new-round-btn" class="btn btn-primary">New Round</button>
+            <button id="reset-btn" class="btn btn-danger">Reset Server</button>
+        </div>
+    </div>
+
+    <script>
+        class PPokerAdmin {
+            constructor() {
+                console.log('👑 [ADMIN] Initializing PPoker Admin Panel...');
+                this.ws = null;
+                this.reconnectAttempts = 0;
+                this.maxReconnectAttempts = 5;
+                this.reconnectDelay = 2000;
+                this.serverState = null;
+                
+                this.init();
+            }
+
+            init() {
+                console.log('👑 [ADMIN] Setting up admin panel...');
+                this.setupEventListeners();
+                this.loadServerInfo();
+                this.connect();
+            }
+
+            async loadServerInfo() {
+                try {
+                    const response = await fetch('/api/server-info');
+                    const serverInfo = await response.json();
+                    
+                    document.getElementById('local-url').textContent = serverInfo.localhost;
+                    
+                    const networkInfo = document.getElementById('network-info');
+                    if (serverInfo.networkIP) {
+                        document.getElementById('network-url').textContent = serverInfo.networkIP;
+                        networkInfo.style.display = 'block';
+                    } else {
+                        networkInfo.style.display = 'none';
+                    }
+                } catch (error) {
+                    console.error('Failed to load server info:', error);
+                    document.getElementById('network-url').textContent = 'Unable to detect';
+                }
+            }
+
+            connect() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}`;
+                
+                console.log('👑 [ADMIN] Connecting to WebSocket:', wsUrl);
+                
+                try {
+                    this.ws = new WebSocket(wsUrl);
+                    
+                    this.ws.onopen = () => {
+                        console.log('👑 [ADMIN] WebSocket connected successfully');
+                        this.reconnectAttempts = 0;
+                        this.updateConnectionStatus(true);
+                        
+                        // Register as admin
+                        this.send({
+                            type: 'register_admin'
+                        });
+                    };
+                    
+                    this.ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        console.log('👑 [ADMIN] Received message:', data.type);
+                        this.handleMessage(data);
+                    };
+                    
+                    this.ws.onclose = () => {
+                        console.log('👑 [ADMIN] WebSocket connection closed');
+                        this.updateConnectionStatus(false);
+                        this.attemptReconnect();
+                    };
+                    
+                    this.ws.onerror = (error) => {
+                        console.error('👑 [ADMIN] WebSocket error:', error);
+                        this.updateConnectionStatus(false);
+                    };
+                    
+                } catch (error) {
+                    console.error('👑 [ADMIN] Failed to create WebSocket connection:', error);
+                    this.updateConnectionStatus(false);
+                    this.attemptReconnect();
+                }
+            }
+
+            attemptReconnect() {
+                if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                    this.reconnectAttempts++;
+                    console.log(`👑 [ADMIN] Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${this.reconnectDelay}ms...`);
+                    
+                    setTimeout(() => {
+                        this.connect();
+                    }, this.reconnectDelay);
+                    
+                    this.reconnectDelay *= 1.5; // Exponential backoff
+                } else {
+                    console.error('👑 [ADMIN] Max reconnection attempts reached');
+                }
+            }
+
+            send(message) {
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    console.log('👑 [ADMIN] Sending message:', message.type);
+                    this.ws.send(JSON.stringify(message));
+                } else {
+                    console.error('👑 [ADMIN] Cannot send message - WebSocket not connected');
+                }
+            }
+
+            handleMessage(data) {
+                switch (data.type) {
+                    case 'admin_registered':
+                        console.log('👑 [ADMIN] Admin registration confirmed');
+                        this.serverState = data.state;
+                        this.updateUI();
+                        break;
+                    case 'state_update':
+                        console.log('👑 [ADMIN] State update received:', data.state.state);
+                        this.serverState = data.state;
+                        this.updateUI();
+                        break;
+                    case 'server_reset':
+                        console.log('👑 [ADMIN] Server reset notification received');
+                        break;
+                    default:
+                        console.log('👑 [ADMIN] Unknown message type:', data.type);
+                }
+            }
+
+            setupEventListeners() {
+                console.log('👑 [ADMIN] Setting up event listeners...');
+                
+                document.getElementById('deck-select').addEventListener('change', (e) => {
+                    console.log('👑 [ADMIN] Deck changed to:', e.target.value);
+                    this.send({
+                        type: 'change_deck',
+                        deck: e.target.value
+                    });
+                });
+
+                document.getElementById('start-session-btn').addEventListener('click', () => {
+                    console.log('👑 [ADMIN] Start session button clicked');
+                    this.send({ type: 'start_session' });
+                });
+
+                document.getElementById('reveal-btn').addEventListener('click', () => {
+                    console.log('👑 [ADMIN] Reveal cards button clicked');
+                    this.send({ type: 'reveal_cards' });
+                });
+
+                document.getElementById('new-round-btn').addEventListener('click', () => {
+                    console.log('👑 [ADMIN] New round button clicked');
+                    this.send({ type: 'new_round' });
+                });
+
+                document.getElementById('reset-btn').addEventListener('click', () => {
+                    console.log('👑 [ADMIN] Reset button clicked');
+                    if (confirm('Reset server and disconnect all clients?')) {
+                        console.log('👑 [ADMIN] Reset confirmed');
+                        this.send({ type: 'reset_server' });
+                    } else {
+                        console.log('👑 [ADMIN] Reset cancelled');
+                    }
+                });
+
+                document.getElementById('back-to-reg-btn').addEventListener('click', () => {
+                    console.log('👑 [ADMIN] Back to registration button clicked');
+                    this.send({ type: 'back_to_registration' });
+                });
+            }
+
+            updateConnectionStatus(connected) {
+                console.log('👑 [ADMIN] Updating connection status:', connected);
+                const statusEl = document.getElementById('connection-status');
+                if (connected) {
+                    statusEl.textContent = 'Connected';
+                    statusEl.className = 'connection-status status connected';
+                } else {
+                    statusEl.textContent = 'Disconnected';
+                    statusEl.className = 'connection-status status disconnected';
+                }
+            }
+
+            updateUI() {
+                if (!this.serverState) {
+                    console.log('👑 [ADMIN] No server state available for UI update');
+                    return;
+                }
+
+                console.log('👑 [ADMIN] Updating UI for state:', this.serverState.state);
+                
+                // Hide all panels
+                document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
+
+                switch (this.serverState.state) {
+                    case 'REGISTRATION':
+                        console.log('👑 [ADMIN] Showing registration panel');
+                        this.showRegistrationPanel();
+                        break;
+                    case 'SESSION_START':
+                        console.log('👑 [ADMIN] Showing session panel');
+                        this.showSessionPanel();
+                        break;
+                    case 'CARD_REVEAL':
+                        console.log('👑 [ADMIN] Showing reveal panel');
+                        this.showRevealPanel();
+                        break;
+                }
+            }
+
+            showRegistrationPanel() {
+                document.getElementById('registration-panel').classList.remove('hidden');
+                
+                const clients = this.serverState.clients || {};
+                const clientCount = Object.keys(clients).length;
+                
+                console.log('👑 [ADMIN] Registration panel - client count:', clientCount);
+                document.getElementById('client-count').textContent = clientCount;
+                
+                const clientList = document.getElementById('client-list');
+                
+                if (clientCount === 0) {
+                    clientList.innerHTML = '<div class="empty-state">Waiting for clients to connect...</div>';
+                } else {
+                    clientList.innerHTML = '';
+                    Object.entries(clients).forEach(([id, client]) => {
+                        console.log('👑 [ADMIN] Adding client to list:', client.alias);
+                        const div = document.createElement('div');
+                        div.className = 'client-item';
+                        div.innerHTML = `
+                            <div class="client-status"></div>
+                            <span>${client.alias}</span>
+                        `;
+                        clientList.appendChild(div);
+                    });
+                }
+
+                const startBtn = document.getElementById('start-session-btn');
+                startBtn.disabled = clientCount === 0;
+                console.log('👑 [ADMIN] Start button enabled:', !startBtn.disabled);
+            }
+
+            showSessionPanel() {
+                document.getElementById('session-panel').classList.remove('hidden');
+                document.getElementById('session-id').textContent = this.serverState.sessionId || 'N/A';
+
+                const clients = this.serverState.clients || {};
+                const clientArray = Object.values(clients);
+                const votedCount = clientArray.filter(c => c.vote !== null).length;
+                const totalCount = clientArray.length;
+                const progress = totalCount > 0 ? (votedCount / totalCount) * 100 : 0;
+                
+                console.log('👑 [ADMIN] Session panel - voting progress:', {
+                    voted: votedCount,
+                    total: totalCount,
+                    percentage: progress.toFixed(1) + '%'
+                });
+
+                document.getElementById('progress-fill').style.width = progress + '%';
+                document.getElementById('progress-text').textContent = `${votedCount} / ${totalCount} voted`;
+
+                const votingClients = document.getElementById('voting-clients');
+                votingClients.innerHTML = '';
+
+                Object.entries(clients).forEach(([id, client]) => {
+                    const hasVoted = client.vote !== null;
+                    console.log('👑 [ADMIN] Client', client.alias, '- voted:', hasVoted);
+                    
+                    const div = document.createElement('div');
+                    div.className = 'client-item';
+                    const status = hasVoted ? 'voted' : 'waiting';
+                    const icon = hasVoted ? '✓' : '?';
+                    
+                    div.innerHTML = `
+                        <div class="client-status ${status}"></div>
+                        <span>${client.alias}</span>
+                        <span>${icon}</span>
+                    `;
+                    votingClients.appendChild(div);
+                });
+            }
+
+            showRevealPanel() {
+                document.getElementById('reveal-panel').classList.remove('hidden');
+                document.getElementById('reveal-session-id').textContent = this.serverState.sessionId || 'N/A';
+
+                // Show results
+                const resultsGrid = document.getElementById('results-grid');
+                resultsGrid.innerHTML = '';
+                
+                const clients = this.serverState.clients || {};
+                let votesDisplayed = 0;
+                
+                console.log('👑 [ADMIN] Revealing votes:');
+                Object.entries(clients).forEach(([id, client]) => {
+                    if (client.vote !== null) {
+                        console.log('👑 [ADMIN] Vote revealed -', client.alias, ':', client.vote);
+                        votesDisplayed++;
+                        const div = document.createElement('div');
+                        div.className = 'vote-card';
+                        div.innerHTML = `
+                            <div class="vote-value">${client.vote}</div>
+                            <div>${client.alias}</div>
+                        `;
+                        resultsGrid.appendChild(div);
+                    }
+                });
+                
+                console.log('👑 [ADMIN] Total votes displayed:', votesDisplayed);
+
+                // Show statistics
+                this.showStatistics();
+            }
+
+            showStatistics() {
+                const statsContainer = document.getElementById('statistics');
+                const stats = this.serverState.statistics;
+                
+                console.log('👑 [ADMIN] Displaying statistics:', stats);
+                
+                if (!stats) {
+                    statsContainer.innerHTML = '<div class="stat-item">No numeric votes to analyze</div>';
+                    return;
+                }
+
+                const statsArray = [
+                    { label: 'Average', value: stats.average },
+                    { label: 'Median', value: stats.median },
+                    { label: 'Min', value: stats.min },
+                    { label: 'Max', value: stats.max },
+                    { label: 'Consensus', value: stats.consensus + '%' }
+                ];
+
+                statsContainer.innerHTML = '';
+                statsArray.forEach(stat => {
+                    const div = document.createElement('div');
+                    div.className = 'stat-item';
+                    div.innerHTML = `
+                        <div class="stat-value">${stat.value}</div>
+                        <div class="stat-label">${stat.label}</div>
+                    `;
+                    statsContainer.appendChild(div);
+                });
+            }
+        }
+
+        // Initialize admin panel
+        console.log('👑 [ADMIN] Starting PPoker Admin Panel...');
+        new PPokerAdmin();
+    </script>
+
+    <div class="footer">
+        Vibe-coded in Jul/2025 by Daniel Callegari using Claude Sonnet 4 :)
+    </div>
+</body>
+</html>

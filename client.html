@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PPoker Client</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #dc2626;
+            --gray: #6b7280;
+            --light-gray: #f3f4f6;
+            --white: #ffffff;
+            --border: #e5e7eb;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--light-gray);
+            color: #374151;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: var(--white);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: var(--primary);
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .connection-status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 500;
+            margin-top: 10px;
+        }
+
+        .status.connected {
+            background: #dcfce7;
+            color: var(--success);
+        }
+
+        .status.disconnected {
+            background: #fef2f2;
+            color: var(--danger);
+        }
+
+        .panel {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .panel h2 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 5px;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #1d4ed8;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #b91c1c;
+        }
+
+        .btn-secondary {
+            background: var(--gray);
+            color: white;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #4b5563;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+            gap: 15px;
+            margin: 25px 0;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 2px dashed var(--border);
+        }
+
+        .card {
+            aspect-ratio: 3/4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--white);
+            border: 3px solid var(--border);
+            border-radius: 12px;
+            font-size: 1.4rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-height: 80px;
+            position: relative;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, var(--primary), #1d4ed8);
+            border-radius: 14px;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+            background: #f8fafc;
+        }
+
+        .card:hover::before {
+            opacity: 0.1;
+        }
+
+        .card:active {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        }
+
+        .card.selected {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+        }
+
+        .card.selected::before {
+            opacity: 0.2;
+        }
+
+        .card.selected:hover {
+            background: #1d4ed8;
+            transform: translateY(-4px);
+        }
+
+        .selection-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: var(--light-gray);
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .selection-status.has-selection {
+            background: #dcfce7;
+        }
+
+        .waiting-message {
+            text-align: center;
+            padding: 40px;
+            color: var(--gray);
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .result-card {
+            text-align: center;
+            padding: 15px;
+            background: var(--light-gray);
+            border-radius: 8px;
+        }
+
+        .result-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .result-name {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+
+        .statistics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: var(--light-gray);
+            border-radius: 8px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 30px;
+            color: var(--gray);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Notification animations */
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🃏 PPoker Client</h1>
+            <p>Planning Poker Voting</p>
+            <div id="connection-status" class="connection-status status disconnected">Disconnected</div>
+            <div id="current-player" style="margin-top: 10px; font-weight: 500;"></div>
+        </div>
+
+        <!-- Registration Panel -->
+        <div id="registration-panel" class="panel">
+            <h2>👋 Join Session</h2>
+            <div class="form-group">
+                <label for="player-name">Your Name:</label>
+                <input type="text" id="player-name" placeholder="Enter your name" maxlength="20">
+            </div>
+            <button id="connect-btn" class="btn btn-primary">Connect to Session</button>
+        </div>
+
+        <!-- Session Panel -->
+        <div id="session-panel" class="panel hidden">
+            <h2>🎯 Select Your Card</h2>
+            
+            <div id="selection-status" class="selection-status">
+                <span>❓ No card selected</span>
+                <button id="clear-selection-btn" class="btn btn-secondary hidden">Clear</button>
+            </div>
+
+            <div style="text-align: center; margin: 15px 0; color: var(--gray); font-weight: 500;">
+                👆 Click a card below to cast your vote
+            </div>
+
+            <div id="cards-grid" class="cards-grid">
+                <div class="waiting-message">
+                    <p>⏳ Waiting for session to start...</p>
+                </div>
+            </div>
+
+            <button id="disconnect-btn" class="btn btn-danger">Disconnect</button>
+        </div>
+
+        <!-- Results Panel -->
+        <div id="results-panel" class="panel hidden">
+            <h2>🏆 Results</h2>
+            
+            <h3>Votes</h3>
+            <div id="results-grid" class="results-grid"></div>
+
+            <h3>Statistics</h3>
+            <div id="statistics-grid" class="statistics-grid"></div>
+
+            <button id="disconnect-btn-results" class="btn btn-danger">Disconnect</button>
+        </div>
+    </div>
+
+    <script>
+        class PPokerClient {
+            constructor() {
+                console.log('🚀 [CLIENT] Initializing PPoker Client...');
+                this.ws = null;
+                this.connected = false;
+                this.clientId = null;
+                this.playerName = '';
+                this.selectedCard = null;
+                this.currentDeck = [1, 2, 3, 5, 8, 13, 21, 34, 55, 100];
+                this.reconnectAttempts = 0;
+                this.maxReconnectAttempts = 5;
+                this.reconnectDelay = 2000;
+                this.serverState = null;
+                this.heartbeatInterval = null;
+                
+                console.log('🚀 [CLIENT] Client initialized');
+                this.init();
+            }
+
+            init() {
+                console.log('🚀 [CLIENT] Setting up client...');
+                this.setupEventListeners();
+                this.loadSavedName();
+                this.updateUI();
+                console.log('🚀 [CLIENT] Client setup complete');
+            }
+
+            connect(playerName) {
+                this.playerName = playerName;
+                
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}`;
+                
+                console.log('🔌 [CLIENT] Connecting to WebSocket:', wsUrl);
+                
+                try {
+                    this.ws = new WebSocket(wsUrl);
+                    
+                    this.ws.onopen = () => {
+                        console.log('🔌 [CLIENT] WebSocket connected successfully');
+                        this.reconnectAttempts = 0;
+                        this.reconnectDelay = 2000; // Reset delay
+                        this.connected = true;
+                        this.updateConnectionStatus(true);
+                        
+                        // Start heartbeat
+                        this.startHeartbeat();
+                        
+                        // Register with server
+                        this.send({
+                            type: 'register_client',
+                            alias: this.playerName,
+                            clientId: this.clientId
+                        });
+                    };
+                    
+                    this.ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        console.log('📨 [CLIENT] Received message:', data.type);
+                        this.handleMessage(data);
+                    };
+                    
+                    this.ws.onclose = () => {
+                        console.log('🔌 [CLIENT] WebSocket connection closed');
+                        this.connected = false;
+                        this.updateConnectionStatus(false);
+                        this.stopHeartbeat();
+                        this.attemptReconnect();
+                    };
+                    
+                    this.ws.onerror = (error) => {
+                        console.error('🔌 [CLIENT] WebSocket error:', error);
+                        this.connected = false;
+                        this.updateConnectionStatus(false);
+                    };
+                    
+                } catch (error) {
+                    console.error('🔌 [CLIENT] Failed to create WebSocket connection:', error);
+                    this.connected = false;
+                    this.updateConnectionStatus(false);
+                    this.attemptReconnect();
+                }
+            }
+
+            startHeartbeat() {
+                console.log('💓 [CLIENT] Starting heartbeat...');
+                this.heartbeatInterval = setInterval(() => {
+                    if (this.connected && this.clientId) {
+                        this.send({
+                            type: 'heartbeat',
+                            clientId: this.clientId
+                        });
+                    }
+                }, 5000); // Send heartbeat every 5 seconds
+            }
+
+            stopHeartbeat() {
+                if (this.heartbeatInterval) {
+                    console.log('💓 [CLIENT] Stopping heartbeat...');
+                    clearInterval(this.heartbeatInterval);
+                    this.heartbeatInterval = null;
+                }
+            }
+
+            attemptReconnect() {
+                if (this.reconnectAttempts < this.maxReconnectAttempts && this.playerName) {
+                    this.reconnectAttempts++;
+                    console.log(`🔌 [CLIENT] Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${this.reconnectDelay}ms...`);
+                    
+                    setTimeout(() => {
+                        this.connect(this.playerName);
+                    }, this.reconnectDelay);
+                    
+                    this.reconnectDelay = Math.min(this.reconnectDelay * 1.5, 10000); // Exponential backoff, max 10s
+                } else {
+                    console.error('🔌 [CLIENT] Max reconnection attempts reached or no player name');
+                }
+            }
+
+            send(message) {
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    console.log('📤 [CLIENT] Sending message:', message.type);
+                    this.ws.send(JSON.stringify(message));
+                } else {
+                    console.error('📤 [CLIENT] Cannot send message - WebSocket not connected');
+                }
+            }
+
+            handleMessage(data) {
+                console.log('📨 [CLIENT] Raw message received:', data);
+                switch (data.type) {
+                    case 'registration_success':
+                        console.log('👤 [CLIENT] Registration successful, client ID:', data.clientId);
+                        console.log('👤 [CLIENT] Registration state received:', data.state);
+                        this.clientId = data.clientId;
+                        this.serverState = data.state;
+                        this.updateUI();
+                        break;
+                    case 'state_update':
+                        console.log('🔄 [CLIENT] State update received:', data.state.state);
+                        console.log('🔄 [CLIENT] Full state object:', data.state);
+                        
+                        // Check if this is a new round starting (transition to SESSION_START)
+                        const wasInSession = this.serverState && this.serverState.state === 'SESSION_START';
+                        const isNewSession = data.state.state === 'SESSION_START';
+                        const sessionIdChanged = this.serverState && 
+                            this.serverState.sessionId !== data.state.sessionId;
+                        
+                        // Clear selection if new round started
+                        if (isNewSession && (sessionIdChanged || !wasInSession)) {
+                            console.log('🔄 [CLIENT] New round detected - clearing card selection');
+                            this.selectedCard = null;
+                            this.showNotification('🔄 New round started - selection cleared', 'info');
+                        }
+                        
+                        this.serverState = data.state;
+                        this.currentDeck = data.state.deck || this.currentDeck;
+                        console.log('🔄 [CLIENT] Current deck set to:', this.currentDeck);
+                        this.updateUI();
+                        break;
+                    case 'server_reset':
+                        console.log('🔄 [CLIENT] Server reset - disconnecting');
+                        this.disconnect();
+                        break;
+                    default:
+                        console.log('❓ [CLIENT] Unknown message type:', data.type);
+                }
+            }
+
+            disconnect() {
+                console.log('🔌 [CLIENT] Disconnecting from server...');
+                this.stopHeartbeat();
+                if (this.ws) {
+                    this.ws.close();
+                }
+                this.connected = false;
+                this.clientId = null;
+                this.serverState = null;
+                this.selectedCard = null;
+                this.reconnectAttempts = this.maxReconnectAttempts; // Prevent automatic reconnection
+                this.updateConnectionStatus(false);
+                this.updateUI();
+            }
+
+            setupEventListeners() {
+                console.log('👤 [CLIENT] Setting up event listeners...');
+                
+                document.getElementById('connect-btn').addEventListener('click', () => {
+                    const nameInput = document.getElementById('player-name');
+                    const playerName = nameInput.value.trim();
+                    
+                    if (!playerName) {
+                        alert('Please enter your name');
+                        return;
+                    }
+                    
+                    console.log('👤 [CLIENT] Connect button clicked with name:', playerName);
+                    localStorage.setItem('ppoker_player_name', playerName);
+                    this.connect(playerName);
+                });
+
+                document.getElementById('disconnect-btn').addEventListener('click', () => {
+                    console.log('👤 [CLIENT] Disconnect button clicked');
+                    this.disconnect();
+                });
+
+                document.getElementById('disconnect-btn-results').addEventListener('click', () => {
+                    console.log('👤 [CLIENT] Disconnect button clicked (results)');
+                    this.disconnect();
+                });
+
+                document.getElementById('clear-selection-btn').addEventListener('click', () => {
+                    console.log('👤 [CLIENT] Clear selection button clicked');
+                    this.clearSelection();
+                });
+                
+                console.log('👤 [CLIENT] All event listeners set up successfully');
+            }
+
+            loadSavedName() {
+                const saved = localStorage.getItem('ppoker_player_name');
+                if (saved) {
+                    console.log('👤 [CLIENT] Loaded saved player name:', saved);
+                    document.getElementById('player-name').value = saved;
+                } else {
+                    console.log('👤 [CLIENT] No saved player name found');
+                }
+            }
+
+            selectCard(value) {
+                console.log('🗳️ [CLIENT] Selecting card:', value);
+                console.log('🗳️ [CLIENT] Current selected card:', this.selectedCard);
+                console.log('🗳️ [CLIENT] Connection state:', this.connected);
+                console.log('🗳️ [CLIENT] Server state:', this.serverState?.state);
+                
+                if (!this.connected) {
+                    console.log('🗳️ [CLIENT] Cannot select card - not connected');
+                    this.showNotification('Not connected to server', 'error');
+                    return;
+                }
+                
+                if (this.serverState?.state !== 'SESSION_START') {
+                    console.log('🗳️ [CLIENT] Cannot select card - session not started, current state:', this.serverState?.state);
+                    this.showNotification('Please wait for the session to start', 'warning');
+                    return;
+                }
+
+                // Toggle selection if same card clicked
+                if (this.selectedCard === value) {
+                    this.selectedCard = null;
+                    console.log('🗳️ [CLIENT] Deselected card, cleared selection');
+                } else {
+                    this.selectedCard = value;
+                    console.log('🗳️ [CLIENT] Selected card set to:', value);
+                }
+
+                // Send vote to server
+                this.send({
+                    type: 'cast_vote',
+                    vote: this.selectedCard,
+                    clientId: this.clientId
+                });
+
+                // Show user feedback
+                if (this.selectedCard) {
+                    this.showNotification(`✅ You voted: ${this.selectedCard}`, 'success');
+                } else {
+                    this.showNotification('🔄 Vote cleared', 'info');
+                }
+
+                this.updateUI();
+                console.log('🗳️ [CLIENT] Card selection complete, selected:', this.selectedCard);
+            }
+
+            showNotification(message, type = 'info') {
+                console.log(`📢 [CLIENT] Notification [${type}]:`, message);
+                
+                // Remove existing notification
+                const existing = document.querySelector('.notification');
+                if (existing) existing.remove();
+                
+                // Create notification element
+                const notification = document.createElement('div');
+                notification.className = 'notification';
+                notification.textContent = message;
+                
+                // Style based on type
+                let bgColor = '#3b82f6'; // blue for info
+                if (type === 'success') bgColor = '#10b981'; // green
+                if (type === 'warning') bgColor = '#f59e0b'; // yellow
+                if (type === 'error') bgColor = '#ef4444'; // red
+                
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: ${bgColor};
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    z-index: 9999;
+                    animation: slideIn 0.3s ease-out;
+                `;
+                
+                document.body.appendChild(notification);
+                
+                // Auto remove after 3 seconds
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.style.animation = 'slideOut 0.3s ease-in forwards';
+                        setTimeout(() => notification.remove(), 300);
+                    }
+                }, 3000);
+            }
+
+            clearSelection() {
+                console.log('🗳️ [CLIENT] Clearing card selection');
+                this.selectCard(null);
+            }
+
+            updateConnectionStatus(connected) {
+                console.log('🔗 [CLIENT] Updating connection status:', connected);
+                const statusEl = document.getElementById('connection-status');
+                if (connected) {
+                    statusEl.textContent = 'Connected';
+                    statusEl.className = 'connection-status status connected';
+                } else {
+                    statusEl.textContent = 'Disconnected';
+                    statusEl.className = 'connection-status status disconnected';
+                }
+            }
+
+            updateUI() {
+                console.log('🎨 [CLIENT] Updating UI...');
+                // Hide all panels
+                document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
+
+                if (!this.connected) {
+                    console.log('🎨 [CLIENT] Not connected - showing registration panel');
+                    document.getElementById('registration-panel').classList.remove('hidden');
+                    document.getElementById('current-player').textContent = '';
+                    return;
+                }
+
+                if (!this.serverState) {
+                    console.log('🎨 [CLIENT] No server state - showing registration panel');
+                    document.getElementById('registration-panel').classList.remove('hidden');
+                    return;
+                }
+
+                console.log('🎨 [CLIENT] Server state:', this.serverState.state);
+                document.getElementById('current-player').textContent = `Logged in as: ${this.playerName}`;
+
+                switch (this.serverState.state) {
+                    case 'REGISTRATION':
+                        console.log('🎨 [CLIENT] Showing waiting for session');
+                        this.showWaitingForSession();
+                        break;
+                    case 'SESSION_START':
+                        console.log('🎨 [CLIENT] Showing session panel');
+                        this.showSessionPanel();
+                        break;
+                    case 'CARD_REVEAL':
+                        console.log('🎨 [CLIENT] Showing results panel');
+                        this.showResultsPanel();
+                        break;
+                    default:
+                        console.log('🎨 [CLIENT] Unknown state, showing waiting for session');
+                        this.showWaitingForSession();
+                }
+                console.log('🎨 [CLIENT] UI update complete');
+            }
+
+            showWaitingForSession() {
+                console.log('⏳ [CLIENT] Showing waiting for session panel');
+                document.getElementById('session-panel').classList.remove('hidden');
+                document.getElementById('cards-grid').innerHTML = '<div class="waiting-message"><p>⏳ Waiting for session to start...</p></div>';
+                
+                // Update selection status properly
+                const statusEl = document.getElementById('selection-status');
+                const clearBtn = document.getElementById('clear-selection-btn');
+                let statusSpan = statusEl.querySelector('span');
+                if (!statusSpan) {
+                    statusSpan = document.createElement('span');
+                    statusEl.innerHTML = '';
+                    statusEl.appendChild(statusSpan);
+                }
+                statusEl.className = 'selection-status';
+                statusSpan.textContent = '⏳ Waiting for session to start...';
+                clearBtn.classList.add('hidden');
+            }
+
+            showSessionPanel() {
+                console.log('🎮 [CLIENT] Showing session panel');
+                console.log('🎮 [CLIENT] Current server state:', this.serverState);
+                console.log('🎮 [CLIENT] Current selected card:', this.selectedCard);
+                console.log('🎮 [CLIENT] Current deck:', this.currentDeck);
+                
+                document.getElementById('session-panel').classList.remove('hidden');
+                
+                // Update selection status
+                const statusEl = document.getElementById('selection-status');
+                const clearBtn = document.getElementById('clear-selection-btn');
+                let statusSpan = statusEl.querySelector('span');
+                
+                // Ensure we have a span element
+                if (!statusSpan) {
+                    console.log('🎮 [CLIENT] Creating new span element for status');
+                    statusSpan = document.createElement('span');
+                    statusEl.innerHTML = '';
+                    statusEl.appendChild(statusSpan);
+                }
+                
+                if (this.selectedCard !== null) {
+                    console.log('🎮 [CLIENT] Player has selected card:', this.selectedCard);
+                    statusEl.className = 'selection-status has-selection';
+                    statusSpan.textContent = `✅ Selected: ${this.selectedCard}`;
+                    clearBtn.classList.remove('hidden');
+                } else {
+                    console.log('🎮 [CLIENT] No card selected');
+                    statusEl.className = 'selection-status';
+                    statusSpan.textContent = '❓ No card selected';
+                    clearBtn.classList.add('hidden');
+                }
+
+                // Create cards
+                console.log('🎮 [CLIENT] About to create cards...');
+                this.createCards();
+                console.log('🎮 [CLIENT] Session panel setup complete');
+            }
+
+            showResultsPanel() {
+                console.log('🏆 [CLIENT] Showing results panel');
+                document.getElementById('results-panel').classList.remove('hidden');
+
+                // Show results
+                const resultsGrid = document.getElementById('results-grid');
+                resultsGrid.innerHTML = '';
+
+                const clients = this.serverState.clients || {};
+                console.log('🏆 [CLIENT] Displaying votes from clients:', Object.keys(clients).length);
+                
+                Object.entries(clients).forEach(([id, client]) => {
+                    if (client.vote !== null) {
+                        console.log('🏆 [CLIENT] Showing vote:', client.vote, 'from:', client.alias);
+                        const div = document.createElement('div');
+                        div.className = 'result-card';
+                        div.innerHTML = `
+                            <div class="result-value">${client.vote}</div>
+                            <div class="result-name">${client.alias}</div>
+                        `;
+                        resultsGrid.appendChild(div);
+                    }
+                });
+
+                // Show statistics
+                this.showStatistics();
+            }
+
+            createCards() {
+                console.log('🃏 [CLIENT] Creating cards for deck:', this.currentDeck);
+                const container = document.getElementById('cards-grid');
+                
+                if (!container) {
+                    console.error('🃏 [CLIENT] ERROR: cards-grid element not found!');
+                    return;
+                }
+                
+                console.log('🃏 [CLIENT] cards-grid element found:', container);
+                container.innerHTML = '';
+
+                // Add instruction text
+                const instruction = document.createElement('div');
+                instruction.style.cssText = 'grid-column: 1 / -1; text-align: center; margin-bottom: 15px; color: var(--primary); font-weight: 600; font-size: 1rem; padding: 10px; background: #eff6ff; border-radius: 8px; border: 2px solid #dbeafe;';
+                instruction.innerHTML = '🖱️ <strong>Click any card below to vote</strong>';
+                container.appendChild(instruction);
+                console.log('🃏 [CLIENT] Added instruction text');
+
+                if (!this.currentDeck || this.currentDeck.length === 0) {
+                    console.error('🃏 [CLIENT] ERROR: No deck available!', this.currentDeck);
+                    const errorMsg = document.createElement('div');
+                    errorMsg.textContent = 'No cards available';
+                    errorMsg.style.cssText = 'text-align: center; padding: 20px; color: red;';
+                    container.appendChild(errorMsg);
+                    return;
+                }
+
+                console.log('🃏 [CLIENT] Creating', this.currentDeck.length, 'cards...');
+                this.currentDeck.forEach((value, index) => {
+                    console.log('🃏 [CLIENT] Creating card:', value, 'at index:', index);
+                    
+                    const card = document.createElement('button');
+                    card.className = 'card';
+                    card.textContent = value;
+                    card.type = 'button';
+                    
+                    if (this.selectedCard === value) {
+                        card.classList.add('selected');
+                        console.log('🃏 [CLIENT] Marking card as selected:', value);
+                    }
+
+                    // Add click event with immediate feedback
+                    card.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('🃏 [CLIENT] Card button clicked:', value);
+                        
+                        // Visual feedback
+                        card.style.transform = 'scale(0.95)';
+                        setTimeout(() => {
+                            card.style.transform = '';
+                        }, 150);
+                        
+                        this.selectCard(value);
+                    });
+
+                    // Add number label for easier identification
+                    const label = document.createElement('span');
+                    label.style.cssText = 'position: absolute; top: 4px; left: 4px; font-size: 0.7rem; opacity: 0.6;';
+                    label.textContent = (index + 1).toString();
+                    card.appendChild(label);
+
+                    container.appendChild(card);
+                    console.log('🃏 [CLIENT] Card', value, 'added to container');
+                });
+                console.log('🃏 [CLIENT] Created', this.currentDeck.length, 'clickable card buttons successfully');
+            }
+
+            showStatistics() {
+                console.log('📊 [CLIENT] Calculating statistics...');
+                const clients = this.serverState.clients || {};
+                const votes = Object.values(clients)
+                    .map(c => c.vote)
+                    .filter(v => v !== null && typeof v === 'number');
+
+                console.log('📊 [CLIENT] Numeric votes found:', votes);
+                const statsContainer = document.getElementById('statistics-grid');
+                statsContainer.innerHTML = '';
+
+                if (votes.length === 0) {
+                    console.log('📊 [CLIENT] No numeric votes to analyze');
+                    statsContainer.innerHTML = '<div class="stat-item">No numeric votes</div>';
+                    return;
+                }
+
+                const sorted = [...votes].sort((a, b) => a - b);
+                const sum = votes.reduce((a, b) => a + b, 0);
+                const average = sum / votes.length;
+                const median = sorted.length % 2 === 0 
+                    ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+                    : sorted[Math.floor(sorted.length / 2)];
+
+                // Calculate consensus
+                const frequency = {};
+                votes.forEach(v => frequency[v] = (frequency[v] || 0) + 1);
+                const maxFreq = Math.max(...Object.values(frequency));
+                const consensus = Math.round((maxFreq / votes.length) * 100);
+
+                console.log('📊 [CLIENT] Statistics calculated:', { average, median, consensus });
+
+                const stats = [
+                    { label: 'Average', value: average.toFixed(1) },
+                    { label: 'Median', value: median },
+                    { label: 'Min', value: Math.min(...votes) },
+                    { label: 'Max', value: Math.max(...votes) },
+                    { label: 'Consensus', value: consensus + '%' }
+                ];
+
+                stats.forEach(stat => {
+                    const div = document.createElement('div');
+                    div.className = 'stat-item';
+                    div.innerHTML = `
+                        <div class="stat-value">${stat.value}</div>
+                        <div class="stat-label">${stat.label}</div>
+                    `;
+                    statsContainer.appendChild(div);
+                });
+            }
+        }
+
+        // Initialize client
+        console.log('🚀 [CLIENT] Starting PPoker Client application...');
+        new PPokerClient();
+    </script>
+
+    <div class="footer">
+        Vibe-coded in Jul/2025 by Daniel Callegari using Claude Sonnet 4 :)
+    </div>
+</body>
+</html>
