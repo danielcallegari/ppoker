@@ -1,12 +1,6 @@
-# 🃏 Planning Poker Applicatio2. **Start the server:**
-   ```bash
-   npm start
-   ```
+# 🃏 Planning Poker Application
 
-3. **Access the application:**
-   - **Server Status**: http://localhost:3000/status (overview of all URLs)
-   - **Admin Panel**: http://localhost:3000/admin
-   - **Client Access**: http://localhost:3000/clienteal-time planning poker application built with Node.js, WebSockets, and modern web technologies.
+A real-time planning poker application built with Node.js, WebSockets, and modern web technologies.
 
 An experiment with "Vibe Coding" by Daniel Callegari in Jul/2025.
 
@@ -20,6 +14,7 @@ An experiment with "Vibe Coding" by Daniel Callegari in Jul/2025.
 - **Clickable card interface** with mouse support
 - **Automatic reconnection** and heartbeat monitoring
 - **Network IP display** for easy client access
+- **Server status dashboard** with quick access to all URLs
 
 ## 🚀 Quick Start
 
@@ -40,9 +35,10 @@ An experiment with "Vibe Coding" by Daniel Callegari in Jul/2025.
    ```
 
 3. **Access the application:**
+   - **Server Status**: http://localhost:3000/status (overview of all URLs)
    - **Admin Panel**: http://localhost:3000/admin
-   - **Client Interface**: http://localhost:3000/client
-   - **Network access**: Check admin panel for network IP (for other devices on same network)
+   - **Client Access**: http://localhost:3000/client
+   - **Network access**: Check server status page for network IP (for other devices on same network)
 
 ## 🎯 How to Use
 
