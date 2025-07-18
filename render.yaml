@@ -8,4 +8,4 @@ services:
       - key: NODE_ENV
         value: production
     domains:
-      - ppoker.onrender.com  # Replace with your preferred domain
+      - ppoker-s944.onrender.com  # Replace with your preferred domain
