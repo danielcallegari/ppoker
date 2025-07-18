@@ -169,6 +169,11 @@ class PPokerServer {
             res.sendFile(path.join(__dirname, 'server-status.html'));
         });
         
+        // CSS file route
+        this.app.get('/styles.css', (req, res) => {
+            res.sendFile(path.join(__dirname, 'styles.css'));
+        });
+        
         // Default route
         this.app.get('/', (req, res) => {
             res.redirect('/status');
