@@ -412,15 +412,33 @@
             connect(playerName) {
                 this.playerName = playerName;
                 
+                // Determine WebSocket URL with better protocol detection
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 const wsUrl = `${protocol}//${window.location.host}`;
                 
                 console.log('🔌 [CLIENT] Connecting to WebSocket:', wsUrl);
+                console.log('🔌 [CLIENT] Current protocol:', window.location.protocol);
+                console.log('🔌 [CLIENT] Host:', window.location.host);
                 
                 try {
+                    // Close existing connection if any
+                    if (this.ws) {
+                        this.ws.close();
+                    }
+                    
                     this.ws = new WebSocket(wsUrl);
                     
+                    // Set a connection timeout
+                    const connectionTimeout = setTimeout(() => {
+                        if (this.ws.readyState === WebSocket.CONNECTING) {
+                            console.error('🔌 [CLIENT] WebSocket connection timeout');
+                            this.ws.close();
+                            this.attemptReconnect();
+                        }
+                    }, 10000); // 10 second timeout
+                    
                     this.ws.onopen = () => {
+                        clearTimeout(connectionTimeout);
                         console.log('🔌 [CLIENT] WebSocket connected successfully');
                         this.reconnectAttempts = 0;
                         this.reconnectDelay = 2000; // Reset delay
@@ -444,16 +462,23 @@
                         this.handleMessage(data);
                     };
                     
-                    this.ws.onclose = () => {
-                        console.log('🔌 [CLIENT] WebSocket connection closed');
+                    this.ws.onclose = (event) => {
+                        clearTimeout(connectionTimeout);
+                        console.log('🔌 [CLIENT] WebSocket connection closed. Code:', event.code, 'Reason:', event.reason);
                         this.connected = false;
                         this.updateConnectionStatus(false);
                         this.stopHeartbeat();
-                        this.attemptReconnect();
+                        
+                        // Only attempt reconnect if it wasn't a normal closure
+                        if (event.code !== 1000) {
+                            this.attemptReconnect();
+                        }
                     };
                     
                     this.ws.onerror = (error) => {
+                        clearTimeout(connectionTimeout);
                         console.error('🔌 [CLIENT] WebSocket error:', error);
+                        console.error('🔌 [CLIENT] ReadyState:', this.ws ? this.ws.readyState : 'undefined');
                         this.connected = false;
                         this.updateConnectionStatus(false);
                     };

@@ -11,7 +11,18 @@ class PPokerServer {
         
         this.app = express();
         this.server = http.createServer(this.app);
-        this.wss = new WebSocket.Server({ server: this.server });
+        
+        // Configure WebSocket server with proper options for deployment
+        this.wss = new WebSocket.Server({ 
+            server: this.server,
+            perMessageDeflate: false,
+            clientTracking: true,
+            verifyClient: (info) => {
+                console.log('🔍 [SERVER] WebSocket connection attempt from:', info.origin);
+                console.log('🔍 [SERVER] Headers:', info.req.headers);
+                return true; // Accept all connections
+            }
+        });
         
         this.state = 'REGISTRATION';
         this.clients = new Map();
@@ -28,14 +39,27 @@ class PPokerServer {
         
         const PORT = process.env.PORT || 3000;
         const localIP = this.getLocalIPAddress();
+        const isProduction = process.env.NODE_ENV === 'production';
         
         this.server.listen(PORT, () => {
-            console.log(`🚀 [SERVER] PPoker server running on http://localhost:${PORT}`);
-            if (localIP) {
-                console.log(`🌐 [SERVER] Network access: http://${localIP}:${PORT}`);
+            console.log('🚀 [SERVER] ========================================');
+            console.log(`🚀 [SERVER] PPoker server running on port ${PORT}`);
+            console.log(`🚀 [SERVER] Environment: ${process.env.NODE_ENV || 'development'}`);
+            console.log(`🚀 [SERVER] Production mode: ${isProduction}`);
+            
+            if (!isProduction) {
+                console.log(`🚀 [SERVER] Local access: http://localhost:${PORT}`);
+                if (localIP) {
+                    console.log(`🌐 [SERVER] Network access: http://${localIP}:${PORT}`);
+                }
             }
-            console.log(`🚀 [SERVER] Admin panel: http://localhost:${PORT}/admin`);
-            console.log(`🚀 [SERVER] Client access: http://localhost:${PORT}/client`);
+            
+            console.log(`🚀 [SERVER] Admin panel: /admin`);
+            console.log(`🚀 [SERVER] Client access: /client`);
+            console.log(`🚀 [SERVER] Server status: /status`);
+            console.log(`🚀 [SERVER] Debug tool: /debug`);
+            console.log(`🚀 [SERVER] Health check: /health`);
+            console.log('🚀 [SERVER] ========================================');
         });
     }
 
@@ -55,20 +79,74 @@ class PPokerServer {
     setupRoutes() {
         console.log('🚀 [SERVER] Setting up HTTP routes...');
         
+        // Trust proxy settings for deployment platforms
+        this.app.set('trust proxy', 1);
+        
+        // Add CORS headers for WebSocket compatibility
+        this.app.use((req, res, next) => {
+            res.header('Access-Control-Allow-Origin', '*');
+            res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+            res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma');
+            
+            // Handle preflight requests
+            if (req.method === 'OPTIONS') {
+                res.sendStatus(200);
+            } else {
+                next();
+            }
+        });
+        
         // Serve static files
         this.app.use(express.static(path.join(__dirname, 'public')));
+        
+        // Health check endpoint for deployment platforms
+        this.app.get('/health', (req, res) => {
+            res.status(200).json({
+                status: 'healthy',
+                timestamp: new Date().toISOString(),
+                clients: this.clients.size,
+                state: this.state
+            });
+        });
+        
+        // WebSocket connection test endpoint
+        this.app.get('/ws-test', (req, res) => {
+            res.status(200).json({
+                message: 'WebSocket server is running',
+                wsUrl: req.headers['x-forwarded-proto'] === 'https' ? 
+                    `wss://${req.get('host')}` : 
+                    `ws://${req.get('host')}`,
+                timestamp: new Date().toISOString()
+            });
+        });
         
         // Server info API endpoint
         this.app.get('/api/server-info', (req, res) => {
             const PORT = process.env.PORT || 3000;
             const localIP = this.getLocalIPAddress();
-            res.json({
+            const isProduction = process.env.NODE_ENV === 'production';
+            const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+            const host = req.get('host');
+            const baseUrl = `${protocol}://${host}`;
+            
+            const response = {
                 port: PORT,
-                localhost: `http://localhost:${PORT}`,
-                networkIP: localIP ? `http://${localIP}:${PORT}` : null,
-                adminURL: `http://localhost:${PORT}/admin`,
-                clientURL: `http://localhost:${PORT}/client`
-            });
+                environment: process.env.NODE_ENV || 'development',
+                baseUrl: baseUrl,
+                adminURL: `${baseUrl}/admin`,
+                clientURL: `${baseUrl}/client`,
+                debugURL: `${baseUrl}/debug`,
+                healthURL: `${baseUrl}/health`,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Add local network info in development
+            if (!isProduction) {
+                response.localhost = `http://localhost:${PORT}`;
+                response.networkIP = localIP ? `http://${localIP}:${PORT}` : null;
+            }
+            
+            res.json(response);
         });
         
         // Admin panel route
@@ -81,6 +159,16 @@ class PPokerServer {
             res.sendFile(path.join(__dirname, 'client.html'));
         });
         
+        // WebSocket debug route
+        this.app.get('/debug', (req, res) => {
+            res.sendFile(path.join(__dirname, 'ws-debug.html'));
+        });
+        
+        // Server status route
+        this.app.get('/status', (req, res) => {
+            res.sendFile(path.join(__dirname, 'server-status.html'));
+        });
+        
         // Default route
         this.app.get('/', (req, res) => {
             res.redirect('/admin');
@@ -90,8 +178,15 @@ class PPokerServer {
     setupWebSocket() {
         console.log('🚀 [SERVER] Setting up WebSocket connections...');
         
-        this.wss.on('connection', (ws) => {
-            console.log('🔌 [SERVER] New WebSocket connection established');
+        this.wss.on('connection', (ws, request) => {
+            const clientIP = request.headers['x-forwarded-for'] || request.connection.remoteAddress;
+            console.log('🔌 [SERVER] New WebSocket connection established from IP:', clientIP);
+            
+            // Set ping/pong for connection health
+            ws.isAlive = true;
+            ws.on('pong', () => {
+                ws.isAlive = true;
+            });
             
             ws.on('message', (message) => {
                 try {
@@ -100,11 +195,15 @@ class PPokerServer {
                     this.handleMessage(ws, data);
                 } catch (error) {
                     console.error('❌ [SERVER] Error parsing message:', error);
+                    this.sendToClient(ws, {
+                        type: 'error',
+                        message: 'Invalid message format'
+                    });
                 }
             });
             
-            ws.on('close', () => {
-                console.log('🔌 [SERVER] WebSocket connection closed');
+            ws.on('close', (code, reason) => {
+                console.log('🔌 [SERVER] WebSocket connection closed. Code:', code, 'Reason:', reason.toString());
                 this.handleDisconnection(ws);
             });
             
@@ -117,6 +216,23 @@ class PPokerServer {
                 type: 'state_update',
                 state: this.getStateForClient()
             });
+        });
+        
+        // Set up connection health monitoring
+        const interval = setInterval(() => {
+            this.wss.clients.forEach((ws) => {
+                if (ws.isAlive === false) {
+                    console.log('💀 [SERVER] Terminating unresponsive WebSocket connection');
+                    return ws.terminate();
+                }
+                
+                ws.isAlive = false;
+                ws.ping();
+            });
+        }, 30000); // Check every 30 seconds
+        
+        this.wss.on('close', () => {
+            clearInterval(interval);
         });
     }
 

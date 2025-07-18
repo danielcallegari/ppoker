@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Debug - PPoker</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.connecting {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .info {
+            background: #e7f3ff;
+            border: 1px solid #b8daff;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 WebSocket Debug Tool</h1>
+        
+        <div class="info">
+            <h3>Connection Information</h3>
+            <p><strong>Current Protocol:</strong> <span id="protocol"></span></p>
+            <p><strong>Host:</strong> <span id="host"></span></p>
+            <p><strong>WebSocket URL:</strong> <span id="wsUrl"></span></p>
+        </div>
+        
+        <div id="status" class="status disconnected">
+            🔴 Disconnected
+        </div>
+        
+        <div>
+            <button id="connectBtn" onclick="connect()">Connect</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+            <button onclick="testPing()" id="pingBtn" disabled>Send Ping</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+        
+        <h3>Debug Log</h3>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        let ws = null;
+        let connectionAttempts = 0;
+        let maxAttempts = 5;
+        let reconnectDelay = 2000;
+
+        // Update UI with connection info
+        document.getElementById('protocol').textContent = window.location.protocol;
+        document.getElementById('host').textContent = window.location.host;
+        
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}`;
+        document.getElementById('wsUrl').textContent = wsUrl;
+
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.textContent += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+
+        function updateStatus(status, message) {
+            const statusElement = document.getElementById('status');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            const pingBtn = document.getElementById('pingBtn');
+            
+            statusElement.className = `status ${status}`;
+            
+            switch(status) {
+                case 'connected':
+                    statusElement.textContent = `🟢 ${message || 'Connected'}`;
+                    connectBtn.disabled = true;
+                    disconnectBtn.disabled = false;
+                    pingBtn.disabled = false;
+                    break;
+                case 'connecting':
+                    statusElement.textContent = `🟡 ${message || 'Connecting...'}`;
+                    connectBtn.disabled = true;
+                    disconnectBtn.disabled = false;
+                    pingBtn.disabled = true;
+                    break;
+                case 'disconnected':
+                    statusElement.textContent = `🔴 ${message || 'Disconnected'}`;
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                    pingBtn.disabled = true;
+                    break;
+            }
+        }
+
+        function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                log('Already connected');
+                return;
+            }
+
+            connectionAttempts++;
+            log(`Connection attempt ${connectionAttempts}/${maxAttempts}`);
+            log(`Attempting to connect to: ${wsUrl}`);
+            
+            updateStatus('connecting', `Connecting... (${connectionAttempts}/${maxAttempts})`);
+
+            try {
+                ws = new WebSocket(wsUrl);
+                
+                const connectionTimeout = setTimeout(() => {
+                    if (ws.readyState === WebSocket.CONNECTING) {
+                        log('Connection timeout (10 seconds)');
+                        ws.close();
+                        attemptReconnect();
+                    }
+                }, 10000);
+
+                ws.onopen = () => {
+                    clearTimeout(connectionTimeout);
+                    connectionAttempts = 0;
+                    reconnectDelay = 2000;
+                    log('✅ WebSocket connection opened successfully');
+                    updateStatus('connected', 'Connected');
+                    
+                    // Send test registration
+                    testRegistration();
+                };
+
+                ws.onmessage = (event) => {
+                    log(`📨 Received: ${event.data}`);
+                };
+
+                ws.onclose = (event) => {
+                    clearTimeout(connectionTimeout);
+                    log(`❌ Connection closed. Code: ${event.code}, Reason: ${event.reason || 'No reason given'}`);
+                    updateStatus('disconnected', `Closed (${event.code})`);
+                    
+                    if (event.code !== 1000) {
+                        attemptReconnect();
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    clearTimeout(connectionTimeout);
+                    log(`❌ WebSocket error: ${error.message || 'Unknown error'}`);
+                    log(`❌ ReadyState: ${ws ? ws.readyState : 'undefined'}`);
+                    updateStatus('disconnected', 'Error occurred');
+                };
+
+            } catch (error) {
+                log(`❌ Failed to create WebSocket: ${error.message}`);
+                updateStatus('disconnected', 'Connection failed');
+                attemptReconnect();
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                log('Disconnecting WebSocket...');
+                ws.close(1000, 'User requested disconnect');
+                ws = null;
+            }
+        }
+
+        function testPing() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const testMessage = {
+                    type: 'heartbeat',
+                    timestamp: Date.now()
+                };
+                log(`📤 Sending heartbeat: ${JSON.stringify(testMessage)}`);
+                ws.send(JSON.stringify(testMessage));
+            } else {
+                log('❌ Cannot send ping - not connected');
+            }
+        }
+
+        function testRegistration() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const testMessage = {
+                    type: 'register_client',
+                    alias: 'Debug Client',
+                    clientId: 'debug-' + Date.now()
+                };
+                log(`📤 Sending registration: ${JSON.stringify(testMessage)}`);
+                ws.send(JSON.stringify(testMessage));
+            }
+        }
+
+        function attemptReconnect() {
+            if (connectionAttempts < maxAttempts) {
+                log(`Will retry in ${reconnectDelay}ms...`);
+                setTimeout(() => {
+                    connect();
+                }, reconnectDelay);
+                reconnectDelay = Math.min(reconnectDelay * 1.5, 10000);
+            } else {
+                log(`❌ Max connection attempts (${maxAttempts}) reached`);
+                updateStatus('disconnected', 'Connection failed');
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('log').textContent = '';
+        }
+
+        // Auto-connect on load
+        log('🚀 Debug tool loaded');
+        log(`Browser: ${navigator.userAgent}`);
+        log(`WebSocket support: ${window.WebSocket ? 'Yes' : 'No'}`);
+        
+        // Check if server is reachable first
+        fetch('/health')
+            .then(response => response.json())
+            .then(data => {
+                log(`✅ Server health check passed: ${JSON.stringify(data)}`);
+                connect();
+            })
+            .catch(error => {
+                log(`❌ Server health check failed: ${error.message}`);
+                log('Server might not be running or reachable');
+            });
+    </script>
+</body>
+</html>

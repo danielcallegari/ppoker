@@ -371,17 +371,36 @@
             }
 
             connect() {
+                // Determine WebSocket URL with better protocol detection
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 const wsUrl = `${protocol}//${window.location.host}`;
                 
                 console.log('👑 [ADMIN] Connecting to WebSocket:', wsUrl);
+                console.log('👑 [ADMIN] Current protocol:', window.location.protocol);
+                console.log('👑 [ADMIN] Host:', window.location.host);
                 
                 try {
+                    // Close existing connection if any
+                    if (this.ws) {
+                        this.ws.close();
+                    }
+                    
                     this.ws = new WebSocket(wsUrl);
                     
+                    // Set a connection timeout
+                    const connectionTimeout = setTimeout(() => {
+                        if (this.ws.readyState === WebSocket.CONNECTING) {
+                            console.error('👑 [ADMIN] WebSocket connection timeout');
+                            this.ws.close();
+                            this.attemptReconnect();
+                        }
+                    }, 10000); // 10 second timeout
+                    
                     this.ws.onopen = () => {
+                        clearTimeout(connectionTimeout);
                         console.log('👑 [ADMIN] WebSocket connected successfully');
                         this.reconnectAttempts = 0;
+                        this.reconnectDelay = 2000; // Reset delay
                         this.updateConnectionStatus(true);
                         
                         // Register as admin
@@ -396,14 +415,21 @@
                         this.handleMessage(data);
                     };
                     
-                    this.ws.onclose = () => {
-                        console.log('👑 [ADMIN] WebSocket connection closed');
+                    this.ws.onclose = (event) => {
+                        clearTimeout(connectionTimeout);
+                        console.log('👑 [ADMIN] WebSocket connection closed. Code:', event.code, 'Reason:', event.reason);
                         this.updateConnectionStatus(false);
-                        this.attemptReconnect();
+                        
+                        // Only attempt reconnect if it wasn't a normal closure
+                        if (event.code !== 1000) {
+                            this.attemptReconnect();
+                        }
                     };
                     
                     this.ws.onerror = (error) => {
+                        clearTimeout(connectionTimeout);
                         console.error('👑 [ADMIN] WebSocket error:', error);
+                        console.error('👑 [ADMIN] ReadyState:', this.ws ? this.ws.readyState : 'undefined');
                         this.updateConnectionStatus(false);
                     };
                     

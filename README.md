@@ -1,6 +1,12 @@
-# 🃏 Planning Poker Application
+# 🃏 Planning Poker Applicatio2. **Start the server:**
+   ```bash
+   npm start
+   ```
 
-A real-time planning poker application built with Node.js, WebSockets, and modern web technologies.
+3. **Access the application:**
+   - **Server Status**: http://localhost:3000/status (overview of all URLs)
+   - **Admin Panel**: http://localhost:3000/admin
+   - **Client Access**: http://localhost:3000/clienteal-time planning poker application built with Node.js, WebSockets, and modern web technologies.
 
 An experiment with "Vibe Coding" by Daniel Callegari in Jul/2025.
 
@@ -92,15 +98,33 @@ npm run dev
 
 This uses nodemon for automatic server restarts on file changes.
 
+### Debug WebSocket Issues
+
+Visit `/debug` to test WebSocket connectivity and diagnose connection issues.
+
 ### Project Structure
 
 ```
 ├── server.js              # Main Node.js server
 ├── admin.html             # Admin panel interface
 ├── client.html            # Client voting interface
+├── server-status.html     # Server status and URL overview
+├── ws-debug.html          # WebSocket debugging tool
+├── render.yaml            # Render.com deployment config
 ├── package.json           # Node.js dependencies
-└── README.md              # This file
+├── README.md              # This file
+└── DEPLOYMENT.md          # Deployment guide and troubleshooting
 ```
+
+## 🚀 Deployment
+
+For production deployment and troubleshooting WebSocket issues, see [DEPLOYMENT.md](DEPLOYMENT.md).
+
+**Quick deployment checklist:**
+- Set `NODE_ENV=production`
+- Ensure platform supports WebSocket upgrades
+- Test using the `/debug` endpoint
+- Check server logs for WebSocket errors
 
 ## 📝 License
 

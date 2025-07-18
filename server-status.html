@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Status - PPoker</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #2563eb;
+            margin: 0;
+            font-size: 2.5rem;
+        }
+        .header p {
+            color: #64748b;
+            margin: 10px 0 0 0;
+            font-size: 1.1rem;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .status-card {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        .status-card:hover {
+            border-color: #2563eb;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.1);
+        }
+        .status-card h3 {
+            margin: 0 0 15px 0;
+            color: #1e293b;
+            font-size: 1.2rem;
+        }
+        .url-link {
+            display: block;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 10px 0;
+            text-align: center;
+            font-weight: 500;
+            transition: background 0.3s ease;
+        }
+        .url-link:hover {
+            background: #1d4ed8;
+        }
+        .url-link.secondary {
+            background: #64748b;
+        }
+        .url-link.secondary:hover {
+            background: #475569;
+        }
+        .url-link.success {
+            background: #059669;
+        }
+        .url-link.success:hover {
+            background: #047857;
+        }
+        .info-section {
+            background: #f1f5f9;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #374151;
+        }
+        .info-value {
+            color: #6b7280;
+            font-family: monospace;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-indicator.online {
+            background: #10b981;
+        }
+        .status-indicator.offline {
+            background: #ef4444;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🃏 PPoker Server</h1>
+            <p>Planning Poker Server Status & Quick Access</p>
+        </div>
+
+        <div id="loading" class="loading">
+            <p>Loading server information...</p>
+        </div>
+
+        <div id="content" style="display: none;">
+            <div class="status-grid">
+                <div class="status-card">
+                    <h3>📊 Admin Panel</h3>
+                    <p>Manage poker sessions, view statistics, and control the game flow.</p>
+                    <a href="/admin" class="url-link" target="_blank">Open Admin Panel</a>
+                </div>
+
+                <div class="status-card">
+                    <h3>👥 Client Access</h3>
+                    <p>Players join here to participate in planning poker sessions.</p>
+                    <a href="/client" class="url-link" target="_blank">Open Client Page</a>
+                    <div style="margin-top: 10px; font-size: 0.9rem; color: #64748b;">
+                        Share this link with your team members
+                    </div>
+                </div>
+
+                <div class="status-card">
+                    <h3>🔧 Debug Tools</h3>
+                    <p>Test WebSocket connectivity and diagnose connection issues.</p>
+                    <a href="/debug" class="url-link secondary" target="_blank">WebSocket Debug</a>
+                    <a href="/health" class="url-link success" target="_blank">Health Check</a>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h3>📋 Server Information</h3>
+                <div id="server-info">
+                    <!-- Server info will be populated here -->
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h3>🔗 Quick Copy URLs</h3>
+                <div id="url-list">
+                    <!-- URLs will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadServerInfo() {
+            try {
+                const response = await fetch('/api/server-info');
+                const data = await response.json();
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                
+                displayServerInfo(data);
+                displayUrls(data);
+                
+            } catch (error) {
+                document.getElementById('loading').innerHTML = `
+                    <p style="color: #ef4444;">❌ Failed to load server information</p>
+                    <p style="color: #64748b; font-size: 0.9rem;">${error.message}</p>
+                `;
+            }
+        }
+
+        function displayServerInfo(data) {
+            const infoContainer = document.getElementById('server-info');
+            const now = new Date();
+            const serverTime = new Date(data.timestamp);
+            
+            infoContainer.innerHTML = `
+                <div class="info-row">
+                    <span class="info-label">
+                        <span class="status-indicator online"></span>
+                        Status
+                    </span>
+                    <span class="info-value">Online</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Environment</span>
+                    <span class="info-value">${data.environment}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Port</span>
+                    <span class="info-value">${data.port}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Base URL</span>
+                    <span class="info-value">${data.baseUrl}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Server Time</span>
+                    <span class="info-value">${serverTime.toLocaleString()}</span>
+                </div>
+                ${data.localhost ? `
+                <div class="info-row">
+                    <span class="info-label">Local Access</span>
+                    <span class="info-value">${data.localhost}</span>
+                </div>
+                ` : ''}
+                ${data.networkIP ? `
+                <div class="info-row">
+                    <span class="info-label">Network Access</span>
+                    <span class="info-value">${data.networkIP}</span>
+                </div>
+                ` : ''}
+            `;
+        }
+
+        function displayUrls(data) {
+            const urlContainer = document.getElementById('url-list');
+            
+            const urls = [
+                { label: 'Admin Panel', url: data.adminURL, description: 'For session management' },
+                { label: 'Client Page', url: data.clientURL, description: 'Share with team members' },
+                { label: 'Debug Tool', url: data.debugURL, description: 'WebSocket testing' },
+                { label: 'Health Check', url: data.healthURL, description: 'Server status API' }
+            ];
+            
+            urlContainer.innerHTML = urls.map(item => `
+                <div class="info-row">
+                    <div>
+                        <div class="info-label">${item.label}</div>
+                        <div style="font-size: 0.8rem; color: #64748b;">${item.description}</div>
+                    </div>
+                    <div>
+                        <button onclick="copyToClipboard('${item.url}')" 
+                                style="background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 5px; padding: 5px 10px; cursor: pointer; font-size: 0.8rem;">
+                            Copy URL
+                        </button>
+                    </div>
+                </div>
+                <div style="margin: 5px 0; font-size: 0.85rem; color: #64748b; font-family: monospace; word-break: break-all;">
+                    ${item.url}
+                </div>
+            `).join('');
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Could add a toast notification here
+                console.log('Copied to clipboard:', text);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+
+        // Load server info when page loads
+        loadServerInfo();
+        
+        // Refresh every 30 seconds
+        setInterval(loadServerInfo, 30000);
+    </script>
+</body>
+</html>
