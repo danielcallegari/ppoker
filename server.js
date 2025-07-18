@@ -171,7 +171,7 @@ class PPokerServer {
         
         // Default route
         this.app.get('/', (req, res) => {
-            res.redirect('/admin');
+            res.redirect('/status');
         });
     }
 
